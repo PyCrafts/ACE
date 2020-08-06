@@ -37,6 +37,18 @@ class WatchedFile(object):
         self.path = path
         self.callback = callback
 
+class SignalTimeout(object):
+    def __init__(self, seconds=1, error_message='Timeout'):
+        self.seconds = seconds
+        self.error_message = error_message
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
+
 class AnalysisModule(object):
     """The base class of all analysis logic.  All your custom analysis modules extend this class."""
 
@@ -327,7 +339,16 @@ class AnalysisModule(object):
             # we also want to support sleeping for less than a second
             time.sleep(1 if seconds > 0 else seconds)
             seconds -= 1
-        
+
+    #@property
+    # a thought XXX remove this most likely
+    #def with_signal_timeout(self):
+    #    return self.config_section[]
+
+    @property
+    def maximum_analysis_time(self):
+        return saq.CONFIG['global'].getint('maximum_analysis_time')
+
     @property
     def state(self):
         """Returns the dict object you can use to maintain state over time."""
