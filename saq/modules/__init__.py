@@ -340,14 +340,24 @@ class AnalysisModule(object):
             time.sleep(1 if seconds > 0 else seconds)
             seconds -= 1
 
-    #@property
-    # a thought XXX remove this most likely
-    #def with_signal_timeout(self):
-    #    return self.config_section[]
+    @property
+    def enforce_signal_timeout(self):
+        return self.config.getboolean('signal_timeout', False)
 
     @property
     def maximum_analysis_time(self):
-        return saq.CONFIG['global'].getint('maximum_analysis_time')
+        """Maximum ammount of analysis time available to this module.
+           Not allowed to be greater than saq.CONFIG['global'].getint('maximum_analysis_time').
+        """
+        module_max_time = self.config.getint('maximum_analysis_time', None)
+        global_max_time = saq.CONFIG['global'].getint('maximum_analysis_time')
+        if module_max_time is None:
+            return global_max_time
+        if module_max_time <= global_max_time:
+            return module_max_time
+        else:
+            logging.warning(f"module defined max analysis time can not be greater than global max of {global_max_time}s")
+            return global_max_time
 
     @property
     def state(self):
@@ -816,9 +826,27 @@ class AnalysisModule(object):
         else:
             # if we are executing in "final analysis mode" then we call this function instead
             if final_analysis:
-                analysis_result = self.execute_final_analysis(obj)
+                # if the analysis module is configured to enforce a signal timeout
+                # XXX look at making this more pythonic?
+                if self.enforce_signal_timeout:
+                    try:
+                        with SignalTimeout(seconds=self.maximum_analysis_time):
+                            analysis_result = self.execute_final_analysis(obj)
+                    except TimeoutError:
+                        logging.error(f"{self.name} exceeded configured analysis time of {self.maximum_analysis_time}s on {obj}")
+                        return False
+                else:
+                    analysis_result = self.execute_final_analysis(obj)
             else:
-                analysis_result = self.execute_analysis(obj)
+                if self.enforce_signal_timeout:
+                    try:
+                        with SignalTimeout(seconds=self.maximum_analysis_time):
+                            analysis_result = self.execute_analysis(obj)
+                    except TimeoutError:
+                        logging.error(f"{self.name} exceeded configured analysis time of {self.maximum_analysis_time}s on {obj}")
+                        return False
+                else:
+                    analysis_result = self.execute_analysis(obj)
 
             # cache analysis if enabled
             if analysis_result and self.cache:

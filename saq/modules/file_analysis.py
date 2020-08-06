@@ -35,7 +35,7 @@ import yara_scanner
 from saq.analysis import Analysis, Observable, RootAnalysis
 from saq.constants import *
 from saq.error import report_exception
-from saq.modules import AnalysisModule, SignalTimeout
+from saq.modules import AnalysisModule
 from saq.process_server import Popen, PIPE, DEVNULL, TimeoutExpired
 from saq.util import is_url, URL_REGEX_B, URL_REGEX_STR, is_subdomain, abs_path
 
@@ -3419,14 +3419,9 @@ class URLExtractionAnalyzer(AnalysisModule):
 
         # extract all the URLs out of this file
         extracted_urls = []
-        try:
-            with SignalTimeout(seconds=self.maximum_analysis_time, error_message="urlfinderlib.find_urls took to long."):
-                with open(local_file_path, 'rb') as fp:
-                    extracted_urls = find_urls(fp.read(), base_url=base_url)
-                    logging.debug("extracted {} urls from {}".format(len(extracted_urls), local_file_path))
-        except TimeoutError:
-            logging.error(f"urlfinderlib.find_urls took longer than maximum_analysis_time={self.maximum_analysis_time} seconds")
-            return False
+        with open(local_file_path, 'rb') as fp:
+            extracted_urls = find_urls(fp.read(), base_url=base_url)
+            logging.debug("extracted {} urls from {}".format(len(extracted_urls), local_file_path))
 
         extracted_urls = list(filter(self.filter_excluded_domains, extracted_urls))
         analysis = self.create_analysis(_file)
