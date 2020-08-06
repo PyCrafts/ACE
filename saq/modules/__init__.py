@@ -346,7 +346,7 @@ class AnalysisModule(object):
 
     @property
     def maximum_analysis_time(self):
-        """Maximum ammount of analysis time available to this module.
+        """Maximum amount of analysis time available to this module.
            Not allowed to be greater than saq.CONFIG['global'].getint('maximum_analysis_time').
         """
         module_max_time = self.config.getint('maximum_analysis_time', None)
@@ -356,7 +356,7 @@ class AnalysisModule(object):
         if module_max_time <= global_max_time:
             return module_max_time
         else:
-            logging.warning(f"module defined max analysis time can not be greater than global max of {global_max_time}s")
+            logging.warning(f"misconfiguration - module defined max analysis time can not be greater than global max of {global_max_time}s")
             return global_max_time
 
     @property
